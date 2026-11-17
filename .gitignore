@@ -1,0 +1,14 @@
+# Datos y modelos generados (se recrean al ejecutar el pipeline)
+data/
+models/
+
+# Python
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+.venv/
+venv/
+
+# Otros
+.env
+.DS_Store
