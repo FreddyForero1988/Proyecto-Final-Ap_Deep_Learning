@@ -31,7 +31,7 @@ def build_model(name, data, cfg):
     if name == "ihdt":
         return IHDT(data.n_users, data.n_items, data.genre_ids, data.author_ids,
                     len(data.genre_vocab), len(data.author_vocab),
-                    cfg.dim, cfg.n_layers, cfg.dropout)
+                    cfg.dim, cfg.n_layers, cfg.dropout, cfg.use_genres, cfg.use_authors,cfg.use_interaction)
     raise ValueError(name)
 
 

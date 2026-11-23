@@ -47,7 +47,7 @@ class IHDT(nn.Module):
     """
 
     def __init__(self, n_users, n_items, genre_ids, author_ids, n_genres, n_authors,
-                 dim=64, n_layers=3, dropout=0.1):
+                 dim=64, n_layers=3, dropout=0.1, use_genres=True,use_authors=True,use_interaction=True):
         super().__init__()
         self.n_users, self.n_layers = n_users, n_layers
         self.user_emb = nn.Embedding(n_users, dim)
@@ -62,6 +62,9 @@ class IHDT(nn.Module):
         self.drop = nn.Dropout(dropout)
         self.register_buffer("genre_ids", torch.as_tensor(np.array(genre_ids), dtype=torch.long))
         self.register_buffer("author_ids", torch.as_tensor(np.array(author_ids), dtype=torch.long))
+        self.use_genres = use_genres
+        self.use_authors = use_authors
+        self.use_interaction = use_interaction
         for emb in (self.user_emb, self.item_emb, self.genre_emb, self.author_emb):
             nn.init.normal_(emb.weight, std=0.1)
         with torch.no_grad():
@@ -74,11 +77,31 @@ class IHDT(nn.Module):
         return (emb(ids) * mask).sum(1) / mask.sum(1).clamp(min=1)
 
     def towers(self, g: Graph):
-        genre = self._masked_mean(self.genre_emb, self.genre_ids)
-        author = self._masked_mean(self.author_emb, self.author_ids)
+        genre = (
+            self._masked_mean(self.genre_emb, self.genre_ids)
+            if self.use_genres
+            else torch.zeros_like(self.item_emb.weight)
+        )
+
+        author = (
+            self._masked_mean(self.author_emb, self.author_ids)
+            if self.use_authors
+            else torch.zeros_like(self.item_emb.weight)
+        )
         # Interacción: cada torre recibe un resumen del otro lado del grafo
-        a_u = torch.sparse.mm(g.ui_mean, self.item_emb.weight + genre + author)
-        a_v = torch.sparse.mm(g.iu_mean, self.user_emb.weight)
+        if self.use_interaction:
+            a_u = torch.sparse.mm(
+                g.ui_mean,
+                self.item_emb.weight + genre + author
+            )
+
+            a_v = torch.sparse.mm(
+                g.iu_mean,
+                self.user_emb.weight
+            )
+        else:
+            a_u = torch.zeros_like(self.user_emb.weight)
+            a_v = torch.zeros_like(self.item_emb.weight)
         u_in = torch.cat([self.user_emb.weight, self.user_feat(g.user_feat), a_u], dim=1)
         v_in = torch.cat([self.item_emb.weight, genre, author, a_v], dim=1)
         e_u = F.normalize(F.relu(self.user_tower(u_in)), dim=1)

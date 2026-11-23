@@ -80,6 +80,10 @@ class Config:
     epochs: int = 50
     patience: int = 10              # el paper usa 50; se acorta por el tiempo de Colab
     topk: int = 20
+    # --- Ablation study ---
+    use_genres: bool = True
+    use_authors: bool = True
+    use_interaction: bool = True
 
     def __post_init__(self):
         if self.min_pos_per_user < 3:
