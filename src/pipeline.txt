@@ -1,0 +1,238 @@
+# Pipeline completo: recomendador de libros con IHDT
+# 5 etapas: adquisición, preprocesamiento, división y grafo, entrenamiento y evaluación.
+
+# 0. Preparación
+
+import os, subprocess, sys
+
+REPO_URL = "https://github.com/FreddyForero1988/Proyecto-Final-Ap_Deep_Learning.git"
+
+
+# 2. Clonar y entrar a la carpeta del proyecto (si no estás ya dentro)
+if not os.path.exists("src"):
+    repo_dir = REPO_URL.rstrip("/").split("/")[-1]
+    if repo_dir.endswith(".git"):
+        repo_dir = repo_dir[:-4]
+    if not os.path.exists(repo_dir):
+        subprocess.run(["git", "clone", REPO_URL], check=True)
+    os.chdir(repo_dir)
+    # Si subiste la carpeta completa a GitHub, el proyecto queda en una subcarpeta
+    if not os.path.exists("src"):
+        subs = [d for d in os.listdir(".") if os.path.exists(os.path.join(d, "src"))]
+        if not subs:
+            raise FileNotFoundError("No encuentro la carpeta 'src' en el repositorio. "
+                                    "Revisa qué archivos subiste a GitHub.")
+        os.chdir(subs[0])
+
+print("Carpeta de trabajo:", os.getcwd())
+subprocess.run([sys.executable, "-m", "pip", "install", "-q", "-r", "requirements.txt"], check=True)
+
+import torch
+print("GPU disponible:", torch.cuda.is_available())
+
+# 1. Parámetros
+# Los valores por defecto están en src/config.py. Modifica aquí lo que necesites.
+
+from src.config import Config
+
+cfg = Config()
+# Prueba rápida (descomenta para comprobar que todo corre en pocos minutos):
+# cfg.user_frac, cfg.epochs = 0.05, 2
+cfg.batch_size = 16384
+cfg.epochs = 30
+cfg
+
+# 2. Etapas 1 a 3: adquisición, preprocesamiento, división y grafo
+
+from src.data import prepare_data
+
+data = prepare_data(cfg)
+print(f"Lectores: {data.n_users} | libros: {data.n_items}")
+print(f"train/val/test: {len(data.train)}/{len(data.val)}/{len(data.test)}")
+print(f"géneros: {len(data.genre_vocab)} | autores: {len(data.author_vocab)}")
+data.items.head()
+
+# 3. Etapas 4 y 5: entrenamiento y evaluación
+Entrena y evalúa popularidad, MF-BPR, LightGCN e IHDT.
+
+from src.train import run
+
+results, table = run(["popularity", "mf", "lightgcn", "ihdt"], cfg)
+table.round(4)
+
+# IHDT completo
+
+ cfg = Config()
+
+cfg.user_frac = 0.10
+cfg.epochs = 5
+
+cfg.use_genres = False
+
+run(["ihdt"], cfg)
+
+# Sin autores
+
+cfg = Config()
+
+cfg.user_frac = 0.10
+cfg.epochs = 5
+
+cfg.use_authors = False
+
+results_no_authors, table_no_authors = run(
+    ["ihdt"],
+    cfg
+)
+
+display(table_no_authors)
+
+# SIn generos
+
+cfg = Config()
+
+cfg.user_frac = 0.10
+cfg.epochs = 5
+
+cfg.use_genres = False
+
+results_no_genres, table_no_genres = run(
+    ["ihdt"],
+    cfg
+)
+
+display(table_no_genres)
+
+# Sin interacción
+
+cfg = Config()
+
+cfg.user_frac = 0.10
+cfg.epochs = 5
+
+cfg.use_interaction = False
+
+results_no_interaction, table_no_interaction = run(
+    ["ihdt"],
+    cfg
+)
+
+display(table_no_interaction)
+
+# Tabla comparativa
+
+import pandas as pd
+
+ablation = pd.DataFrame([
+    {
+        "Experimento":"Sin géneros",
+        **table_no_genres.iloc[0].to_dict()
+    },
+    {
+        "Experimento":"Sin autores",
+        **table_no_authors.iloc[0].to_dict()
+    },
+    {
+        "Experimento":"Sin interacción",
+        **table_no_interaction.iloc[0].to_dict()
+    }
+])
+
+ablation
+
+# Experimento Baseline
+
+cfg = Config()
+
+cfg.user_frac = 0.10
+cfg.epochs = 5
+
+cfg.dim = 64
+
+_, table = run(
+    ["ihdt"],
+    cfg
+)
+
+hp_results.append(
+    {
+        "Experimento":"dim=64",
+        **table.iloc[0].to_dict()
+    }
+)
+
+table
+
+# Experimento HP1
+
+cfg = Config()
+
+cfg.user_frac = 0.10
+cfg.epochs = 5
+
+cfg.dim = 32
+
+_, table = run(
+    ["ihdt"],
+    cfg
+)
+
+hp_results.append(
+    {
+        "Experimento":"dim=32",
+        **table.iloc[0].to_dict()
+    }
+)
+
+table
+
+# Experimento HP2
+
+cfg = Config()
+
+cfg.user_frac = 0.10
+cfg.epochs = 5
+
+cfg.dim = 128
+
+_, table = run(
+    ["ihdt"],
+    cfg
+)
+
+hp_results.append(
+    {
+        "Experimento":"dim=128",
+        **table.iloc[0].to_dict()
+    }
+)
+
+table
+
+# Tabla final
+
+hp_df = pd.DataFrame(hp_results)
+
+hp_df
+
+# 4. Curvas de validación
+
+import pandas as pd
+import matplotlib.pyplot as plt
+from src.config import RESULTS_DIR
+
+fig, ax = plt.subplots(1, 2, figsize=(10, 3.5))
+for name in ["mf", "lightgcn", "ihdt"]:
+    h = pd.read_csv(RESULTS_DIR / f"history_{name}.csv")
+    ax[0].plot(h["epoch"], h["loss"], label=name)
+    ax[1].plot(h["epoch"], h[f"recall@{cfg.topk}"], label=name)
+ax[0].set_title("Pérdida BPR (entrenamiento)"); ax[1].set_title(f"Recall@{cfg.topk} (validación)")
+for a in ax: a.set_xlabel("época"); a.legend()
+plt.tight_layout(); plt.show()
+
+import shutil
+from google.colab import files
+from src.config import RESULTS_DIR
+
+shutil.make_archive("results", "zip", RESULTS_DIR)
+files.download("results.zip")
