@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema Inteligente de Recomendación de Libros</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header>
+    <h1>Sistema Inteligente de Recomendación de Libros</h1>
+    <p>Encuentra tu próximo libro favorito utilizando IA y Deep Learning</p>
+</header>
+
+<section class="container">
+
+    <div class="card">
+        <h2>Selecciona tus géneros favoritos</h2>
+
+        <div class="genres">
+            <label><input type="checkbox"> Fantasía</label>
+            <label><input type="checkbox"> Ciencia Ficción</label>
+            <label><input type="checkbox"> Historia</label>
+            <label><input type="checkbox"> Thriller</label>
+            <label><input type="checkbox"> Romance</label>
+            <label><input type="checkbox"> Misterio</label>
+        </div>
+    </div>
+
+    <div class="card">
+        <h2>Autores favoritos</h2>
+
+        <input type="text" id="author" placeholder="Ej: J.K. Rowling">
+    </div>
+
+    <div class="card">
+        <h2>Libros leídos</h2>
+
+        <input type="text" id="book" placeholder="Ej: Harry Potter">
+
+        <button onclick="addBook()">Agregar Libro</button>
+
+        <ul id="bookList"></ul>
+    </div>
+
+    <div class="card center">
+        <button id="generateBtn" onclick="generateRecommendations()">
+            Generar Recomendaciones
+        </button>
+    </div>
+
+    <div class="card hidden" id="results">
+        <h2>Recomendaciones generadas por IHDT</h2>
+
+        <div id="recommendations"></div>
+    </div>
+
+</section>
+
+<script src="app.js"></script>
+
+</body>
+</html>
