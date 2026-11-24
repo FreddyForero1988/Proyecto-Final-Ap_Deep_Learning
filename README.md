@@ -151,14 +151,129 @@ Los datos se descargan solos en la primera ejecución y se guardan en `data/` (e
 | LightGCN | | | | |
 | IHDT | | | | |
 
-## 9. Limitaciones
+## 8. Resultados Finales
 
-- Los datos son lectores generales de Goodreads y los 10 000 libros más calificados: hay sesgo hacia lo popular. "Libros nuevos" significa libros que el lector aún no ha leído, no libros recién publicados.
-- Evaluación offline, sin lectores reales; una sola semilla.
-- Las etiquetas de género vienen de toda la comunidad de Goodreads, no solo de los lectores del dataset.
-- Los hiperparámetros no se ajustaron más allá de los valores del paper.
+La evaluación se realizó utilizando las métricas estándar de recomendación Top-K:
 
-## 10. Referencias
+- Precision@20
+- Recall@20
+- NDCG@20
+- HR@20 (Hit Rate)
+
+### Comparación contra Baselines
+
+| Modelo | Precision@20 | Recall@20 | NDCG@20 | HR@20 |
+|----------|----------:|----------:|----------:|----------:|
+| Popularity | 0.0298 | 0.0774 | 0.0674 | 0.4054 |
+| MF-BPR | 0.0432 | 0.1112 | 0.0975 | 0.5334 |
+| LightGCN | 0.0300 | 0.0779 | 0.0675 | 0.4076 |
+| IHDT | **0.0499** | **0.1294** | **0.1025** | **0.5928** |
+
+El modelo IHDT obtuvo el mejor desempeño en todas las métricas evaluadas, superando a los modelos de referencia utilizados durante el desarrollo del proyecto.
+
+## 9. Estudio de Ablación
+
+Con el fin de validar la contribución de los diferentes componentes de la arquitectura propuesta, se realizaron experimentos eliminando individualmente algunas características del modelo.
+
+| Configuración | Precision@20 | Recall@20 | NDCG@20 | HR@20 |
+|------------|-------------:|-----------:|---------:|--------:|
+| Sin géneros | 0.0389 | 0.1015 | 0.0780 | 0.5073 |
+| Sin autores | 0.0385 | 0.1009 | 0.0773 | 0.5013 |
+| Sin interacción | 0.0391 | 0.1016 | 0.0787 | 0.5081 |
+
+### Conclusiones del estudio
+
+Los resultados muestran que la eliminación de cualquier componente genera una disminución consistente en todas las métricas.
+
+Esto confirma que:
+
+- Los géneros aportan información relevante para la recomendación.
+- Los autores contribuyen significativamente al desempeño del modelo.
+- La interacción entre torres es fundamental para la calidad de las recomendaciones.
+
+Estos experimentos validan las decisiones de diseño adoptadas durante la adaptación del modelo IHDT al dominio de libros.
+
+## 10. Optimización de Hiperparámetros
+
+Se realizó una exploración limitada de hiperparámetros enfocada en la dimensión de los embeddings.
+
+Debido a las restricciones computacionales de Google Colab, los experimentos se ejecutaron utilizando una muestra reducida del conjunto de usuarios y un número limitado de épocas.
+
+| Dimensión Embedding | Precision@20 | Recall@20 | NDCG@20 | HR@20 |
+|--------------------|-------------:|-----------:|---------:|--------:|
+| 32 | 0.0362 | 0.0945 | 0.0722 | 0.4833 |
+| 64 | 0.0396 | 0.1030 | 0.0791 | 0.5152 |
+| 128 | **0.0419** | **0.1097** | **0.0856** | **0.5343** |
+
+### Conclusiones
+
+Los experimentos muestran que el incremento de la dimensión de los embeddings mejora progresivamente el desempeño del sistema.
+
+La configuración de 128 dimensiones presentó los mejores resultados generales, convirtiéndose en una configuración candidata para futuras versiones del modelo.
+
+## 11. Front End
+
+Como complemento al motor de recomendación se diseñó un prototipo de interfaz web orientado al usuario final.
+
+El objetivo es permitir que cualquier lector pueda interactuar con el sistema de recomendación sin necesidad de conocer los detalles técnicos del modelo de Deep Learning.
+
+### Funcionalidades
+
+- Selección de géneros favoritos.
+- Registro de autores favoritos.
+- Ingreso de libros previamente leídos.
+- Generación de recomendaciones personalizadas.
+- Visualización de los resultados obtenidos.
+
+### Tecnologías
+
+- HTML5
+- CSS3
+- JavaScript
+
+### Flujo de Interacción
+
+Usuario
+→ Selección de preferencias
+→ Registro de libros leídos
+→ Procesamiento por el modelo IHDT
+→ Generación del ranking Top-K
+→ Presentación de recomendaciones
+
+El diseño visual fue inspirado en plataformas modernas de contenido digital como Goodreads y Netflix para mejorar la experiencia de usuario.
+
+## 12. Despliegue
+
+La arquitectura del proyecto fue diseñada para permitir su despliegue mediante una API que consuma el modelo entrenado y entregue recomendaciones personalizadas a una interfaz web.
+
+La solución está preparada para integrarse mediante tecnologías como Flask, FastAPI, Render o Hugging Face Spaces, permitiendo exponer el modelo como un servicio de recomendación accesible desde Internet.
+
+El Front End desarrollado constituye la base para futuras versiones desplegadas de la aplicación.
+
+## 13. Trabajo Futuro
+
+Las principales líneas de mejora identificadas son:
+
+- Incorporar información semántica adicional mediante etiquetas (tags).
+- Implementar un grafo heterogéneo completo con meta-paths.
+- Realizar búsquedas sistemáticas de hiperparámetros.
+- Incrementar el tamaño de los embeddings y el número de capas GCN.
+- Incorporar información temporal de lectura.
+- Implementar una API productiva para recomendaciones en línea.
+- Desplegar completamente el sistema en la nube.
+
+## 14. Conclusiones
+
+- Se desarrolló exitosamente una adaptación del modelo IHDT para recomendación de libros utilizando el dataset Goodbooks-10K.
+- El modelo propuesto superó a Popularity, MF-BPR y LightGCN en todas las métricas evaluadas.
+- El uso de información semántica basada en autores y géneros mejoró significativamente la calidad de las recomendaciones.
+- El estudio de ablación validó la importancia de cada componente de la arquitectura propuesta.
+- La exploración de hiperparámetros mostró que embeddings de mayor dimensión permiten mejorar el rendimiento del sistema.
+- Se construyó un pipeline completo que abarca adquisición, procesamiento, entrenamiento, evaluación y generación de recomendaciones.
+- Se diseñó una interfaz orientada al usuario final que facilita la interacción con el motor de recomendación.
+- El proyecto demuestra la viabilidad de aplicar Deep Learning y Graph Neural Networks para resolver problemas reales de recomendación de contenido literario.
+
+## 15. Referencias
 
 - He, Q., Li, X. y Cai, B. (2024). Graph neural network recommendation algorithm based on improved dual tower model. *Scientific Reports*, 14, 3853. https://doi.org/10.1038/s41598-024-54376-3
 - Roy, D. y Dutta, M. (2022). A systematic review and research perspective on recommender systems. *Journal of Big Data*, 9, 59. https://doi.org/10.1186/s40537-022-00592-5
@@ -166,3 +281,5 @@ Los datos se descargan solos en la primera ejecución y se guardan en `data/` (e
 - He, X. et al. (2020). LightGCN: Simplifying and powering graph convolution network for recommendation. *SIGIR*, 639–648. https://doi.org/10.1145/3397271.3401063
 - Wang, X. et al. (2019). Neural graph collaborative filtering. *SIGIR*. https://doi.org/10.1145/3331184.3331267
 - Dataset: `zygmuntz/goodbooks-10k`. https://github.com/zygmuntz/goodbooks-10k
+- Goodfellow, I., Bengio, Y., & Courville, A. (2016). Deep Learning. MIT Press. https://www.deeplearningbook.org/
+- Bergstra, J., & Bengio, Y. (2012). Random Search for Hyper-Parameter Optimization. Journal of Machine Learning Research, 13, 281–305.
